@@ -1,0 +1,3 @@
+.venv/
+coindata/*.csv
+coin-metadata.json
