@@ -1,3 +1,4 @@
 .venv/
 coindata/*.csv
 coin-metadata.json
+coindata-1d

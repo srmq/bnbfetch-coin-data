@@ -20,14 +20,17 @@ import bisect
 import csv
 from pathlib import Path
 import json
+import argparse
+from dateutil import parser
+import datetime
 
 def getSpotURL():
     return 'https://api.binance.com'
 
-async def getSymbolHistory(uptoMillis, symbol, rateLimiter, interval='1m'):
+async def getSymbolHistory(uptoMillis, symbol, rateLimiter, interval, outputDir):
     klinesURL = getSpotURL() + "/api/v3/klines"
 
-    fle = Path('./coindata/' + symbol + '.csv')
+    fle = outputDir / f"{symbol}.csv"
     fle.touch(exist_ok=True)
     with open(fle, 'r+', newline='') as f:
         lineCount = 0
@@ -180,6 +183,13 @@ async def getHistories(coros, maxnum = 50):
             if (t.done()):
                 runningTasks.remove(t)
 
+def dtStringToMillis(strDate):
+    epoch = datetime.datetime.utcfromtimestamp(0)
+    dt = parser.parse(strDate)
+    result = (dt - epoch).total_seconds()*1000.0
+    return result
+
+
 async def main():
     exchangeInfo = await getExchangeInfo()
     rateLimiter = RateLimiter(exchangeInfo)
@@ -200,8 +210,22 @@ async def main():
             touchedCoins.add(coinSymbol['baseAsset'])
             touchedCoins.add(coinSymbol['quoteAsset'])
 
-    nowInMillis = round(time.time() * 1000)
-    getSymbolDataCoros = [getSymbolHistory(nowInMillis, symbol, rateLimiter) for symbol in tradeSymbols]
+    argParser = argparse.ArgumentParser()
+    argParser.add_argument('--end', help='Fetch coin historical data up to this datetime')
+    argParser.add_argument('--interval', choices=['1m', '1d'], default='1m', help='1m (default) or 1d interval')
+    argParser.add_argument('--source_dir', default='./coindata', help='Path where .csv files are stored (default is ./coindata)')
+
+
+    args = argParser.parse_args()
+    endTimeInMillis = round(time.time() * 1000) if (args.end is None) else dtStringToMillis(args.end)
+    outputDir = Path(args.source_dir)
+    if (outputDir.exists()):
+        if not outputDir.is_dir():
+            raise ValueError('argument for --source_dir exists but is not a directory')
+    else:
+        outputDir.mkdir(parents=True)
+    
+    getSymbolDataCoros = [getSymbolHistory(endTimeInMillis, symbol, rateLimiter, args.interval, outputDir) for symbol in tradeSymbols]
     await getHistories(getSymbolDataCoros)
 
     unseenCoins = relevantCoinDict.keys() - touchedCoins
@@ -210,7 +234,7 @@ async def main():
     coinMetadata['trade-symbols'] = list(tradeSymbols)
     coinMetadata['excluded-coins'] = list(unseenCoins)
     coinMetadata['exchange-info'] = exchangeInfo
-    with open("coin-metadata.json", "w") as metaFile:
+    with open(outputDir / "coin-metadata.json", "w") as metaFile:
         json.dump(coinMetadata, metaFile)
 
 
