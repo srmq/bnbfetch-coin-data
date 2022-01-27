@@ -191,13 +191,35 @@ def dtStringToMillis(strDate):
 
 
 async def main():
+    argParser = argparse.ArgumentParser()
+    argParser.add_argument('--end', help='Fetch coin historical data up to this datetime')
+    argParser.add_argument('--interval', choices=['1m', '1d'], default='1m', help='1m (default) or 1d interval')
+    argParser.add_argument('--source_dir', default='./coindata', help='Path where .csv files are stored (default is ./coindata)')
+    argParser.add_argument('--coins', help='CSV file with coins of interest')
+
+    args = argParser.parse_args()
+    endTimeInMillis = round(time.time() * 1000) if (args.end is None) else dtStringToMillis(args.end)
+    outputDir = Path(args.source_dir)
+    coinFile = None
+    if args.coins is None:
+        raise ValueError('filename for --coins is a mandatory argument')
+    else:
+        coinFile = Path(args.coins)
+        if not coinFile.is_file():
+            raise ValueError('argument for --coins is not an existing file')
+    if (outputDir.exists()):
+        if not outputDir.is_dir():
+            raise ValueError('argument for --source_dir exists but is not a directory')
+    else:
+        outputDir.mkdir(parents=True)
+
     exchangeInfo = await getExchangeInfo()
     rateLimiter = RateLimiter(exchangeInfo)
     # get exchange info has weight 10
     await rateLimiter.addWeightAndRequest(10, 1)
 
     relevantCoinDict = {}
-    with open('coins.csv') as relevantCoinFile:
+    with open(coinFile, encoding='latin-1') as relevantCoinFile:
         csvReader = csv.reader(relevantCoinFile, delimiter=',')
         for row in csvReader:
             relevantCoinDict[row[1]] = row[0]
@@ -210,21 +232,6 @@ async def main():
             touchedCoins.add(coinSymbol['baseAsset'])
             touchedCoins.add(coinSymbol['quoteAsset'])
 
-    argParser = argparse.ArgumentParser()
-    argParser.add_argument('--end', help='Fetch coin historical data up to this datetime')
-    argParser.add_argument('--interval', choices=['1m', '1d'], default='1m', help='1m (default) or 1d interval')
-    argParser.add_argument('--source_dir', default='./coindata', help='Path where .csv files are stored (default is ./coindata)')
-
-
-    args = argParser.parse_args()
-    endTimeInMillis = round(time.time() * 1000) if (args.end is None) else dtStringToMillis(args.end)
-    outputDir = Path(args.source_dir)
-    if (outputDir.exists()):
-        if not outputDir.is_dir():
-            raise ValueError('argument for --source_dir exists but is not a directory')
-    else:
-        outputDir.mkdir(parents=True)
-    
     getSymbolDataCoros = [getSymbolHistory(endTimeInMillis, symbol, rateLimiter, args.interval, outputDir) for symbol in tradeSymbols]
     await getHistories(getSymbolDataCoros)
 
