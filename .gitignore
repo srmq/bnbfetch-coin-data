@@ -2,3 +2,7 @@
 coindata/*.csv
 coin-metadata.json
 coindata-1d
+btcupdown-1d/
+btcupdown-1m/
+btcupdown-5m/
+coindata-5m/

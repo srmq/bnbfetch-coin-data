@@ -11,6 +11,15 @@
             "program": "${file}",
             "args": ["--end", "2021-11-16", "--interval", "1d", "--source_dir", "./coindata-1d"],
             "console": "integratedTerminal"
+        },
+        {
+            "name": "BTCUP BTCDOWN",
+            "type": "python",
+            "request": "launch",
+            "program": "${file}",
+            "args": ["--end", "2022-04-07T00:00:00 UTC", "--interval", "1m", "--source_dir", "./btcupdown", "--coins", "btc_3ls_coins.csv"],
+            "console": "integratedTerminal"
         }
+
     ]
 }

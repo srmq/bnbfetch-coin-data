@@ -23,6 +23,7 @@ import json
 import argparse
 from dateutil import parser
 import datetime
+import pytz
 
 def getSpotURL():
     return 'https://api.binance.com'
@@ -184,7 +185,7 @@ async def getHistories(coros, maxnum = 50):
                 runningTasks.remove(t)
 
 def dtStringToMillis(strDate):
-    epoch = datetime.datetime.utcfromtimestamp(0)
+    epoch = datetime.datetime.fromtimestamp(0, tz=pytz.utc)
     dt = parser.parse(strDate)
     result = (dt - epoch).total_seconds()*1000.0
     return result
@@ -193,7 +194,7 @@ def dtStringToMillis(strDate):
 async def main():
     argParser = argparse.ArgumentParser()
     argParser.add_argument('--end', help='Fetch coin historical data up to this datetime')
-    argParser.add_argument('--interval', choices=['1m', '1d'], default='1m', help='1m (default) or 1d interval')
+    argParser.add_argument('--interval', choices=['1m', '1d', '5m'], default='1m', help='1m (default) or 1d interval')
     argParser.add_argument('--source_dir', default='./coindata', help='Path where .csv files are stored (default is ./coindata)')
     argParser.add_argument('--coins', help='CSV file with coins of interest')
 
